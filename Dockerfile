@@ -39,8 +39,13 @@ COPY --from=prerelease /usr/src/app/next.config.ts .
 COPY --from=prerelease /usr/src/app/postcss.config.mjs .
 COPY --from=prerelease /usr/src/app/tsconfig.json .
 
+# Copy entrypoint script for runtime environment injection
+COPY docker-entrypoint.sh /usr/src/app/docker-entrypoint.sh
+
 # Create cache directory with proper permissions for Next.js image optimization
+# Also ensure public directory is writable for runtime config generation
 RUN mkdir -p /usr/src/app/.next/cache/images && \
+    chmod +x /usr/src/app/docker-entrypoint.sh && \
     chown -R bun:bun /usr/src/app
 
 # run the app
@@ -48,4 +53,7 @@ USER bun
 EXPOSE 3000/tcp
 ENV NODE_ENV=production
 ENV PORT=3000
+
+# Use entrypoint to generate runtime config before starting the app
+ENTRYPOINT ["/usr/src/app/docker-entrypoint.sh"]
 CMD [ "bun", "run", "start" ]

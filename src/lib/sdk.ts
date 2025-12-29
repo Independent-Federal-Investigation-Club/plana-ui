@@ -243,8 +243,11 @@ export interface GuildMessage {
   updated_at?: string;
 }
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_PLANA_API_URL || 'http://localhost:8000';
-const FRONTEND_URL = process.env.NEXT_PUBLIC_PLANA_SITE_URL || 'http://localhost:3000';
+import { getConfig } from './config';
+
+// Use runtime config for API URLs (supports Docker runtime injection)
+const getApiBaseUrl = () => getConfig().PLANA_API_URL;
+const getFrontendUrl = () => getConfig().PLANA_SITE_URL;
 
 export class AuthService {
   private static getToken(): string | null {
@@ -293,7 +296,7 @@ export class AuthService {
     const token = this.getToken();
     if (!token) throw new Error('No authentication token');
 
-    const response = await fetch(`${API_BASE_URL}/api${url}`, {
+    const response = await fetch(`${getApiBaseUrl()}/api${url}`, {
       ...options,
       headers: {
         ...options.headers,
@@ -313,7 +316,7 @@ export class AuthService {
   }
 
   static async loginWithRedirect(): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/api/auth/url`);
+    const response = await fetch(`${getApiBaseUrl()}/api/auth/url`);
     if (!response.ok) throw new Error('Failed to get auth URL');
     
     const { url } = await response.json();
@@ -325,7 +328,7 @@ export class AuthService {
       throw new Error('Popup authentication not supported');
     }
 
-    const response = await fetch(`${API_BASE_URL}/api/auth/url`);
+    const response = await fetch(`${getApiBaseUrl()}/api/auth/url`);
     if (!response.ok) throw new Error('Failed to get auth URL');
     
     const { url } = await response.json();
@@ -345,7 +348,7 @@ export class AuthService {
       }
 
       const messageHandler = (event: MessageEvent) => {
-        if (event.origin !== FRONTEND_URL && event.origin !== API_BASE_URL) return;
+        if (event.origin !== getFrontendUrl() && event.origin !== getApiBaseUrl()) return;
         if (!event.data?.type) return;
 
         if (event.data.type === 'DISCORD_OAUTH_SUCCESS') {
@@ -634,7 +637,7 @@ export function getDiscordGuildBannerUrl(guild: Guild): string | null {
 export function getBotInviteUrl(guildId?: string): string {
   const baseUrl = 'https://discord.com/api/oauth2/authorize';
   const params = new URLSearchParams({
-    client_id: process.env.NEXT_PUBLIC_DISCORD_BOT_ID || '',
+    client_id: getConfig().DISCORD_BOT_ID,
     permissions: '8',
     scope: 'bot applications.commands'
   });
