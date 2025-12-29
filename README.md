@@ -150,6 +150,37 @@ bun lint
 - Prettier for consistent formatting
 - Tailwind CSS for styling
 
+## Versioning
+
+This project follows [Semantic Versioning](https://semver.org/) (SemVer). The version is managed in `package.json` and automatically used for:
+
+- **Git tags**: Created during releases (format: `v1.2.3`)
+- **Docker images**: Tagged with version number and `latest`
+- **GitHub releases**: Automatic release notes generation
+
+### Version Management
+
+```bash
+# Bump patch version (0.1.0 -> 0.1.1)
+bun run version:patch
+
+# Bump minor version (0.1.0 -> 0.2.0)
+bun run version:minor
+
+# Bump major version (0.1.0 -> 1.0.0)
+bun run version:major
+```
+
+### Conventional Commits
+
+Use [Conventional Commits](https://www.conventionalcommits.org/) for automated versioning:
+
+- `feat:` - New feature (bumps MINOR)
+- `fix:` - Bug fix (bumps PATCH)
+- `BREAKING CHANGE:` - Breaking change (bumps MAJOR)
+
+See [docs/VERSIONING.md](docs/VERSIONING.md) for complete versioning guide.
+
 ## Deployment
 
 ### Environment Variables
@@ -170,6 +201,19 @@ bun build
 
 # Deploy to your preferred platform
 # (Vercel, Netlify, etc.)
+```
+
+### Docker Deployment
+
+```bash
+# Build Docker image
+docker build -t plana-ui:latest .
+
+# Run with docker-compose
+docker-compose up -d
+
+# Pull specific version
+docker pull your-registry/plana-ui:0.1.0
 ```
 
 ## Contributing

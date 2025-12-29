@@ -105,12 +105,22 @@ jobs:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
         
-    # Skip version extraction - always use latest tag
+    # Extract version from package.json
     - name: Set version info
       if: steps.check_dockerfile.outputs.dockerfile_exists == 'true'
       id: get-version
       run: |
-        echo "Using latest tag for deployment"
+        VERSION=$(node -p "require('./package.json').version")
+        VERSION_TAG="v${VERSION}"
+        SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+        
+        echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+        echo "VERSION_TAG=$VERSION_TAG" >> $GITHUB_OUTPUT
+        echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_OUTPUT
+        
+        echo "Version: $VERSION"
+        echo "Version Tag: $VERSION_TAG"
+        echo "Short SHA: $SHORT_SHA"
 
     # Log in to GitHub Container Registry
     - name: Login to GitHub Container Registry
@@ -131,7 +141,11 @@ jobs:
         platforms: linux/amd64,linux/arm64
         tags: |
           ${{ env.DOCKERHUB_IMAGE_NAME }}:latest
+          ${{ env.DOCKERHUB_IMAGE_NAME }}:${{ steps.get-version.outputs.VERSION }}
+          ${{ env.DOCKERHUB_IMAGE_NAME }}:${{ steps.get-version.outputs.VERSION_TAG }}
           ghcr.io/${{ env.GCR_IMAGE_NAME }}:latest
+          ghcr.io/${{ env.GCR_IMAGE_NAME }}:${{ steps.get-version.outputs.VERSION }}
+          ghcr.io/${{ env.GCR_IMAGE_NAME }}:${{ steps.get-version.outputs.VERSION_TAG }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
         labels: |
@@ -139,15 +153,28 @@ jobs:
           org.opencontainers.image.description=A modern, responsive web interface for configuring the Project Plana Discord bot. Built with Next.js 15, TypeScript, and Tailwind CSS..
           org.opencontainers.image.url=https://github.com/Independent-Federal-Investigation-Club/plana-ui
           org.opencontainers.image.source=https://github.com/Independent-Federal-Investigation-Club/plana-ui
-          org.opencontainers.image.version=latest
+          org.opencontainers.image.version=${{ steps.get-version.outputs.VERSION }}
           org.opencontainers.image.created=${{ github.event.repository.updated_at }}
           org.opencontainers.image.revision=${{ github.sha }}
+
+    # Create Git tag if it doesn't exist
+    - name: Create Git tag
+      if: steps.check_dockerfile.outputs.dockerfile_exists == 'true'
+      run: |
+        VERSION_TAG="${{ steps.get-version.outputs.VERSION_TAG }}"
+        if ! git rev-parse "$VERSION_TAG" >/dev/null 2>&1; then
+          git tag -a "$VERSION_TAG" -m "Release $VERSION_TAG"
+          git push origin "$VERSION_TAG"
+          echo "Created and pushed tag: $VERSION_TAG"
+        else
+          echo "Tag $VERSION_TAG already exists, skipping"
+        fi
 
     - name: Scan Docker image
       if: steps.check_dockerfile.outputs.dockerfile_exists == 'true'
       uses: aquasecurity/trivy-action@master
       with:
-        image-ref: ${{ env.DOCKERHUB_IMAGE_NAME }}:latest
+        image-ref: ${{ env.DOCKERHUB_IMAGE_NAME }}:${{ steps.get-version.outputs.VERSION }}
         format: 'table'
         exit-code: '1'
         ignore-unfixed: true
