@@ -161,6 +161,10 @@ jobs:
     - name: Create Git tag
       if: steps.check_dockerfile.outputs.dockerfile_exists == 'true'
       run: |
+        # Configure Git identity for tag creation
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+        
         VERSION_TAG="${{ steps.get-version.outputs.VERSION_TAG }}"
         if ! git rev-parse "$VERSION_TAG" >/dev/null 2>&1; then
           git tag -a "$VERSION_TAG" -m "Release $VERSION_TAG"
